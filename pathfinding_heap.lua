@@ -93,35 +93,37 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
 		if timer_func > 256 then
 			task.wait()
 		end
-		local current = nodes:Pop()
-		if current == end_node then return true, self:reconstructPath(current) end
-		if tick() - start_time > time_limit then warn("TIMELIMIT REACH") break end
-
-		visited[current] = true
-		for _, neighbor in ipairs(self:getNeighbors(map, current, separation, allow_diagonals)) do
-			if not visited[neighbor] then
-				local r = workspace:Raycast(current, neighbor-current, params)
-				if r then
-					break
-				end
-				
-				local tentative_g = g_score[current] + getMagnitude(current, neighbor)
-				if tentative_g < (g_score[neighbor] or HUGE) then 
-					previous_node[neighbor] = current
-					g_score[neighbor] = tentative_g
-					f_score[neighbor] = tentative_g + getMagnitude(neighbor, end_node)
-					if not nodes:Find(neighbor) then
-						nodes:Insert(neighbor)
+		pcall(function()
+			local current = nodes:Pop()
+			if current == end_node then return true, self:reconstructPath(current) end
+			if tick() - start_time > time_limit then warn("TIMELIMIT REACH") break end
+	
+			visited[current] = true
+			for _, neighbor in ipairs(self:getNeighbors(map, current, separation, allow_diagonals)) do
+				if not visited[neighbor] then
+					local r = workspace:Raycast(current, neighbor-current, params)
+					if r then
+						break
 					end
-
-					-- Update best node if this is closer to the end
-					if f_score[neighbor] < best_f_score then
-						best_node = neighbor
-						best_f_score = f_score[neighbor]
+					
+					local tentative_g = g_score[current] + getMagnitude(current, neighbor)
+					if tentative_g < (g_score[neighbor] or HUGE) then 
+						previous_node[neighbor] = current
+						g_score[neighbor] = tentative_g
+						f_score[neighbor] = tentative_g + getMagnitude(neighbor, end_node)
+						if not nodes:Find(neighbor) then
+							nodes:Insert(neighbor)
+						end
+	
+						-- Update best node if this is closer to the end
+						if f_score[neighbor] < best_f_score then
+							best_node = neighbor
+							best_f_score = f_score[neighbor]
+						end
 					end
 				end
 			end
-		end
+		end)
 	end
 
 	-- Time limit reached or no path found, return the best path so far
