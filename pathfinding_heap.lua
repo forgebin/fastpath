@@ -86,7 +86,13 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
 	local start_time = os.clock()
 	local best_node = start_node
 	local best_f_score = f_score[start_node]
+
+	local timer_func = 0
 	while #nodes > 0 do
+		timer_func += 1
+		if timer_func > 256 then
+			task.wait()
+		end
 		local current = nodes:Pop()
 		if current == end_node then return true, self:reconstructPath(current) end
 		if os.clock() - start_time > time_limit then break end
