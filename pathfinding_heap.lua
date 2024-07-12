@@ -95,7 +95,7 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
 		end
 		local current = nodes:Pop()
 		if current == end_node then return true, self:reconstructPath(current) end
-		if tick() - start_time > time_limit then break end
+		if tick() - start_time > time_limit then warn("TIMELIMIT REACH") break end
 
 		visited[current] = true
 		for _, neighbor in ipairs(self:getNeighbors(map, current, separation, allow_diagonals)) do
