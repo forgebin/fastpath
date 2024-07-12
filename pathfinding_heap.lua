@@ -101,10 +101,6 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
 		for _, neighbor in ipairs(self:getNeighbors(map, current, separation, allow_diagonals)) do
 			if not visited[neighbor] then
 				local tentative_g = g_score[current] + getMagnitude(current, neighbor)
-				local quick_ray = workspace:Raycast(current, neighbor-current, params)
-				if quick_ray then
-					continue
-				end
 				if tentative_g < (g_score[neighbor] or HUGE) then 
 					previous_node[neighbor] = current
 					g_score[neighbor] = tentative_g
