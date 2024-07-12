@@ -92,6 +92,7 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
 		timer_func += 1
 		if timer_func > 256 then
 			task.wait()
+			timer_func = 0
 		end
 		pcall(function()
 			local current = nodes:Pop()
