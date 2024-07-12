@@ -8,119 +8,126 @@ local TINSERT = table.insert
 -- Precompute moves
 local MOVES = {V3(-1,0,0),V3(0,-1,0),V3(0,0,-1),V3(0,0,1),V3(0,1,0),V3(1,0,0)}
 local DIAGONAL_MOVES = {
-    V3(-1,-1,-1),V3(-1,-1,0),V3(-1,-1,1),V3(-1,0,-1),V3(-1,0,1),V3(-1,1,-1),V3(-1,1,0),V3(-1,1,1),
-    V3(0,-1,-1),V3(0,-1,1),V3(0,1,-1),V3(0,1,1),V3(1,-1,-1),V3(1,-1,0),V3(1,-1,1),V3(1,0,-1),V3(1,0,1),
-    V3(1,1,-1),V3(1,1,0),V3(1,1,1)
+	V3(-1,-1,-1),V3(-1,-1,0),V3(-1,-1,1),V3(-1,0,-1),V3(-1,0,1),V3(-1,1,-1),V3(-1,1,0),V3(-1,1,1),
+	V3(0,-1,-1),V3(0,-1,1),V3(0,1,-1),V3(0,1,1),V3(1,-1,-1),V3(1,-1,0),V3(1,-1,1),V3(1,0,-1),V3(1,0,1),
+	V3(1,1,-1),V3(1,1,0),V3(1,1,1)
 }
 
 -- Utility Functions
 local function getMagnitude(a, b) return (b-a).Magnitude end
 local function snap(a, b) return ROUND(a/b)*b end
 local function snapToGrid(v, separation)
-    return V3(snap(v.X, separation.X), snap(v.Y, separation.Y), snap(v.Z, separation.Z))
+	return V3(snap(v.X, separation.X), snap(v.Y, separation.Y), snap(v.Z, separation.Z))
 end
 
 local function vectorToMap(map, v)
-    local mx, my = map[v.X], map[v.X] and map[v.X][v.Y]
-    return my and my[v.Z]
+	local mx, my = map[v.X], map[v.X] and map[v.X][v.Y]
+	return my and my[v.Z]
 end
 
 local function addNode(map, v)
-    local mx = map[v.X]
-    if not mx then mx = {}; map[v.X] = mx end
-    local my = mx[v.Y]
-    if not my then my = {}; mx[v.Y] = my end
-    my[v.Z] = my[v.Z] or v
-    return v
+	local mx = map[v.X]
+	if not mx then mx = {}; map[v.X] = mx end
+	local my = mx[v.Y]
+	if not my then my = {}; mx[v.Y] = my end
+	my[v.Z] = my[v.Z] or v
+	return v
 end
 
 -- Pathfinding Functions
 function pathfinding:getNeighbors(map, node, separation, allow_diagonals)
-    local neighbors = {}
-    for i = 1, #MOVES do
-        local n = vectorToMap(map, node + MOVES[i] * separation)
-        if n then neighbors[#neighbors+1] = n end
-    end
-    if allow_diagonals then
-        for i = 1, #DIAGONAL_MOVES do
-            local n = vectorToMap(map, node + DIAGONAL_MOVES[i] * separation)
-            if n then neighbors[#neighbors+1] = n end
-        end
-    end
-    return neighbors
+	local neighbors = {}
+	for i = 1, #MOVES do
+		local n = vectorToMap(map, node + MOVES[i] * separation)
+		if n then neighbors[#neighbors+1] = n end
+	end
+	if allow_diagonals then
+		for i = 1, #DIAGONAL_MOVES do
+			local n = vectorToMap(map, node + DIAGONAL_MOVES[i] * separation)
+			if n then neighbors[#neighbors+1] = n end
+		end
+	end
+	return neighbors
 end
 
 local g_score, f_score, previous_node, visited
 
 function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonals, time_limit)
-    if #self:getNeighbors(map, start_node, separation, allow_diagonals) == 0 or
-       #self:getNeighbors(map, end_node, separation, allow_diagonals) == 0 then
-        return false, {}
-    end
+	if #self:getNeighbors(map, start_node, separation, allow_diagonals) == 0 or
+		#self:getNeighbors(map, end_node, separation, allow_diagonals) == 0 then
+		return false, {}
+	end
 
-    time_limit = time_limit or HUGE
-    g_score, f_score, previous_node, visited = {}, {}, {}, {}
+	time_limit = time_limit or HUGE
+	g_score, f_score, previous_node, visited = {}, {}, {}, {}
 
-    g_score[start_node], f_score[start_node] = 0, getMagnitude(start_node, end_node)
+	g_score[start_node], f_score[start_node] = 0, getMagnitude(start_node, end_node)
 
-    local nodes = heap.new(function(a, b) return f_score[a] > f_score[b] end)
-    nodes:Insert(start_node)
+	local nodes = heap.new(function(a, b) return f_score[a] > f_score[b] end)
+	nodes:Insert(start_node)
 
-    local start_time = os.clock()
-    local best_node = start_node
-    local best_f_score = f_score[start_node]
+	local start_time = os.clock()
+	local best_node = start_node
+	local best_f_score = f_score[start_node]
 
-    while #nodes > 0 do
-        local current = nodes:Pop()
-        if current == end_node then return true, self:reconstructPath(current) end
-        if os.clock() - start_time > time_limit then break end
-        
-        visited[current] = true
-        for _, neighbor in ipairs(self:getNeighbors(map, current, separation, allow_diagonals)) do
-            if not visited[neighbor] then
-                local tentative_g = g_score[current] + getMagnitude(current, neighbor)
-                if tentative_g < (g_score[neighbor] or HUGE) then 
-                    previous_node[neighbor] = current
-                    g_score[neighbor] = tentative_g
-                    f_score[neighbor] = tentative_g + getMagnitude(neighbor, end_node)
-                    if not nodes:Find(neighbor) then
-                        nodes:Insert(neighbor)
-                    end
-                    
-                    -- Update best node if this is closer to the end
-                    if f_score[neighbor] < best_f_score then
-                        best_node = neighbor
-                        best_f_score = f_score[neighbor]
-                    end
-                end
-            end
-        end
-    end
+	while #nodes > 0 do
+		local current = nodes:Pop()
+		if current == end_node then return true, self:reconstructPath(current) end
+		if os.clock() - start_time > time_limit then break end
 
-    -- Time limit reached or no path found, return the best path so far
-    return false, self:reconstructPath(best_node)
+		visited[current] = true
+		for _, neighbor in ipairs(self:getNeighbors(map, current, separation, allow_diagonals)) do
+			if not visited[neighbor] then
+				local tentative_g = g_score[current] + getMagnitude(current, neighbor)
+				local quick_pr = RaycastParams.new()
+				quick_pr.RespectCanCollide = true
+				quick_pr.FilterDescendantsInstances = {game:GetService("Players").LocalPlayer.Character}
+				local quick_ray = workspace:Raycast(current, neighbor-current, quick_pr)
+				if quick_ray then
+					continue
+				end
+				if tentative_g < (g_score[neighbor] or HUGE) then 
+					previous_node[neighbor] = current
+					g_score[neighbor] = tentative_g
+					f_score[neighbor] = tentative_g + getMagnitude(neighbor, end_node)
+					if not nodes:Find(neighbor) then
+						nodes:Insert(neighbor)
+					end
+
+					-- Update best node if this is closer to the end
+					if f_score[neighbor] < best_f_score then
+						best_node = neighbor
+						best_f_score = f_score[neighbor]
+					end
+				end
+			end
+		end
+	end
+
+	-- Time limit reached or no path found, return the best path so far
+	return false, self:reconstructPath(best_node)
 end
 
 function pathfinding:reconstructPath(node)
-    local path = {}
-    local current = node
-    while current do
-        table.insert(path, 1, current)
-        current = previous_node[current]
-    end
-    return path
+	local path = {}
+	local current = node
+	while current do
+		table.insert(path, 1, current)
+		current = previous_node[current]
+	end
+	return path
 end
 
 function pathfinding:getPath(map, start_point, end_point, separation, allow_diagonals)
-    local start_node = addNode(map, snapToGrid(start_point, separation))
-    local end_node = addNode(map, snapToGrid(end_point, separation))
+	local start_node = addNode(map, snapToGrid(start_point, separation))
+	local end_node = addNode(map, snapToGrid(end_point, separation))
 
-    if not start_node or not end_node then
-        return {}
-    end
+	if not start_node or not end_node then
+		return {}
+	end
 
-    local success, path = self:aStar(map, start_node, end_node, separation, allow_diagonals)
-    return path
+	local success, path = self:aStar(map, start_node, end_node, separation, allow_diagonals)
+	return path
 end
 
 return pathfinding
