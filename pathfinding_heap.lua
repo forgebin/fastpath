@@ -55,7 +55,7 @@ local g_score, f_score, previous_node, visited
 function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonals, time_limit)
     if #self:getNeighbors(map, start_node, separation, allow_diagonals) == 0 or
        #self:getNeighbors(map, end_node, separation, allow_diagonals) == 0 then
-        return false
+        return false, {}
     end
 
     time_limit = time_limit or HUGE
@@ -67,10 +67,13 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
     nodes:Insert(start_node)
 
     local start_time = os.clock()
+    local best_node = start_node
+    local best_f_score = f_score[start_node]
+
     while #nodes > 0 do
         local current = nodes:Pop()
-        if current == end_node then return true end
-        if os.clock() - start_time > time_limit then return false end
+        if current == end_node then return true, self:reconstructPath(current) end
+        if os.clock() - start_time > time_limit then break end
         
         visited[current] = true
         for _, neighbor in ipairs(self:getNeighbors(map, current, separation, allow_diagonals)) do
@@ -83,36 +86,40 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
                     if not nodes:Find(neighbor) then
                         nodes:Insert(neighbor)
                     end
+                    
+                    -- Update best node if this is closer to the end
+                    if f_score[neighbor] < best_f_score then
+                        best_node = neighbor
+                        best_f_score = f_score[neighbor]
+                    end
                 end
             end
         end
     end
-    return false
+
+    -- Time limit reached or no path found, return the best path so far
+    return false, self:reconstructPath(best_node)
 end
 
-function pathfinding:reconstructPath(node, start_node, end_node, list)
+function pathfinding:reconstructPath(node)
+    local path = {}
     local current = node
-    while current and current ~= start_node do
-        if current ~= end_node then
-            list[#list+1] = current
-        end
+    while current do
+        table.insert(path, 1, current)
         current = previous_node[current]
     end
-    for i = 1, #list // 2 do
-        list[i], list[#list - i + 1] = list[#list - i + 1], list[i]
-    end
+    return path
 end
 
 function pathfinding:getPath(map, start_point, end_point, separation, allow_diagonals)
     local start_node = addNode(map, snapToGrid(start_point, separation))
     local end_node = addNode(map, snapToGrid(end_point, separation))
 
-    if not start_node or not end_node or not self:aStar(map, start_node, end_node, separation, allow_diagonals) then
+    if not start_node or not end_node then
         return {}
     end
 
-    local path = {}
-    self:reconstructPath(end_node, start_node, end_node, path)
+    local success, path = self:aStar(map, start_node, end_node, separation, allow_diagonals)
     return path
 end
 
