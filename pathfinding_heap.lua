@@ -83,7 +83,7 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
 	local nodes = heap.new(function(a, b) return f_score[a] > f_score[b] end)
 	nodes:Insert(start_node)
 
-	local start_time = os.clock()
+	local start_time = tick()
 	local best_node = start_node
 	local best_f_score = f_score[start_node]
 
@@ -95,7 +95,7 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
 		end
 		local current = nodes:Pop()
 		if current == end_node then return true, self:reconstructPath(current) end
-		if os.clock() - start_time > time_limit then break end
+		if tick() - start_time > time_limit then break end
 
 		visited[current] = true
 		for _, neighbor in ipairs(self:getNeighbors(map, current, separation, allow_diagonals)) do
