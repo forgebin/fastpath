@@ -52,7 +52,7 @@ end
 
 local g_score, f_score, previous_node, visited
 
-function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonals, time_limit)
+function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonals, time_limit, params)
 	if #self:getNeighbors(map, start_node, separation, allow_diagonals) == 0 or
 		#self:getNeighbors(map, end_node, separation, allow_diagonals) == 0 then
 		return false, {}
@@ -69,7 +69,6 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
 	local start_time = os.clock()
 	local best_node = start_node
 	local best_f_score = f_score[start_node]
-
 	while #nodes > 0 do
 		local current = nodes:Pop()
 		if current == end_node then return true, self:reconstructPath(current) end
@@ -79,10 +78,7 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
 		for _, neighbor in ipairs(self:getNeighbors(map, current, separation, allow_diagonals)) do
 			if not visited[neighbor] then
 				local tentative_g = g_score[current] + getMagnitude(current, neighbor)
-				local quick_pr = RaycastParams.new()
-				quick_pr.RespectCanCollide = true
-				quick_pr.FilterDescendantsInstances = {game:GetService("Players").LocalPlayer.Character}
-				local quick_ray = workspace:Raycast(current, neighbor-current, quick_pr)
+				local quick_ray = workspace:Raycast(current, neighbor-current, params)
 				if quick_ray then
 					continue
 				end
