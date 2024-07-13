@@ -62,7 +62,7 @@ local function comparator(a, b)
 end
 
 -- main pathfinding function -> A-Star algorithm (https://en.wikipedia.org/wiki/A*_search_algorithm)
-function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonals, time_limit)
+function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonals, time_limit, params)
     if (#(self:getNeighbors(map, start_node, separation, allow_diagonals)) == 0) then
         return false
     end
@@ -93,13 +93,6 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
             return self:reconstructPath(previous_node, end_node)
         end
 
-        -- Update closest node
-        local current_distance = getMagnitude(current, end_node)
-        if current_distance < closest_distance then
-            closest_node = current
-            closest_distance = current_distance
-        end
-
         -- Exceeded time frame
         if (os.clock() - start > time_limit) then
             break
@@ -110,6 +103,11 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
         for _, neighbor in next, neighbors do
             if visited[neighbor] then continue end
 
+            local raycast = workspace:Raycast(current, neighbor-current, params)
+            if raycast then
+                continue
+            end
+            
             local tentative_g = g_score[current] + getMagnitude(current, neighbor)
                     
             if tentative_g < (g_score[neighbor] or math.huge) then 
@@ -125,7 +123,7 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
     end
 
     -- If end_node was not reached, return path to the closest node
-    return self:reconstructPath(previous_node, closest_node)
+    return
 end
 
 -- Recursive path reconstruction (backtracking from previous_node's)
