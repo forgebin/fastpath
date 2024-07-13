@@ -1,6 +1,6 @@
 local mapping = {}
 
--- Constants
+-- Constantss
 local RAY_PRECISION = 1.0e-4
 local V3, ROUND, MIN = Vector3.new, math.round, math.min
 local TINSERT = table.insert
