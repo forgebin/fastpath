@@ -75,7 +75,7 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
 	local timer_func = 0
 	while #nodes > 0 do
 		timer_func += 1
-		if timer_func > 256 then
+		if timer_func > 1024 then
 			task.wait()
 			timer_func = 0
 		end
@@ -87,11 +87,6 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
 			visited[current] = true
 			for _, neighbor in ipairs(self:getNeighbors(map, current, separation, allow_diagonals)) do
 				if not visited[neighbor] then
-					local r = workspace:Raycast(current, neighbor-current, params)
-					if r then
-						break
-					end
-
 					local tentative_g = g_score[current] + getMagnitude(current, neighbor)
 					if tentative_g < (g_score[neighbor] or HUGE) then 
 						previous_node[neighbor] = current
