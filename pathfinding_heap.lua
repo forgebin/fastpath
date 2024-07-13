@@ -19,18 +19,7 @@ local D2 = math.sqrt(2)  -- Cost of moving diagonally in a plane
 local D3 = math.sqrt(3)  -- Cost of moving diagonally in 3D space
 
 local function getMagnitude(start, goal)
-	local dx = math.abs(goal.X - start.X)
-	local dy = math.abs(goal.Y - start.Y)
-	local dz = math.abs(goal.Z - start.Z)
-
-	-- Sort dx, dy, dz in ascending order
-	if dx > dy then dx, dy = dy, dx end
-	if dy > dz then dy, dz = dz, dy end
-	if dx > dy then dx, dy = dy, dx end
-
-	return D * (dx + dy + dz) + 
-		(D2 - 2 * D) * dx + 
-		(D3 - 3 * D2 + 3 * D) * dy
+	return (start-goal).Magnitude
 end
 local function snap(a, b) return ROUND(a/b)*b end
 local function snapToGrid(v, separation)
