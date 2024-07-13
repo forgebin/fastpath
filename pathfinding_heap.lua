@@ -62,73 +62,60 @@ local function comparator(a, b)
 end
 
 -- main pathfinding function -> A-Star algorithm (https://en.wikipedia.org/wiki/A*_search_algorithm)
-function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonals, time_limit, params)
-    local function canReachNeighbor(current, neighbor)
-        if params then
-            local ray = Ray.new(current, neighbor - current)
-            local hit, position = workspace:Raycast(ray.Origin, ray.Direction, params)
-            return not hit or (hit and (position - neighbor).Magnitude < 0.1)
-        end
-        return true
-    end
-
+function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonals, time_limit)
     if (#(self:getNeighbors(map, start_node, separation, allow_diagonals)) == 0) then
-        return {start_node}
+        return false
     end
     if (#(self:getNeighbors(map, end_node, separation, allow_diagonals)) == 0) then
-        return {start_node}
+        return false
     end
-    
-    time_limit = time_limit or math.huge
-    local g_score, f_score = {}, {}
-    local previous_node, visited = {}, {}
+
+    time_limit = time_limit or HUGE
+
+    g_score, f_score = {}, {}
+    previous_node, visited = {}, {}
+
     g_score[start_node] = 0
     f_score[start_node] = getMagnitude(start_node, end_node)
-    local nodes = heap.new(comparator)
+
+    local nodes, current = heap.new(comparator)
     nodes:Insert(start_node)
+
     local start = os.clock()
-    local current
-    
-    while (#nodes > 0) do
-        current = nodes:Pop()
+    while (#nodes > 0 and current ~= end_node) do
+        local current, currentIndex = nodes:Pop()
         visited[current] = true
-        
+
         -- End Node is reached
         if (current == end_node) then
-            break
+            return true
         end
-        
+
         -- Exceeded time frame
-        if (os.clock() - start > time_limit) then
-            break
+        if (os.clock()-start > time_limit) then
+            return false
         end
         
         -- Compute and manage neighbors
         local neighbors = self:getNeighbors(map, current, separation, allow_diagonals)
         for _, neighbor in next, neighbors do
-            if visited[neighbor] or not canReachNeighbor(current, neighbor) then continue end
-            
+            if visited[neighbor] then continue end
+
             local tentative_g = g_score[current] + getMagnitude(current, neighbor)
                     
-            if tentative_g < (g_score[neighbor] or math.huge) then 
+            if tentative_g < (g_score[neighbor] or HUGE) then 
                 previous_node[neighbor] = current
                 g_score[neighbor] = tentative_g
                 f_score[neighbor] = tentative_g + getMagnitude(neighbor, end_node)
+
                 if not nodes:Find(neighbor) then
                     nodes:Insert(neighbor)
                 end
             end
         end
     end
-    
-    -- Reconstruct path
-    local path = {}
-    while current do
-        table.insert(path, 1, current)
-        current = previous_node[current]
-    end
-    
-    return path
+
+    return true
 end
 
 -- Recursive path reconstruction (backtracking from previous_node's)
