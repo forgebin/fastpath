@@ -21,10 +21,6 @@ local D3 = math.sqrt(3)  -- Cost of moving diagonally in 3D space
 local function getMagnitude(start, goal)
 	return (start-goal).Magnitude
 end
-local function snap(a, b) return ROUND(a/b)*b end
-local function snapToGrid(v, separation)
-	return V3(snap(v.X, separation.X), snap(v.Y, separation.Y), snap(v.Z, separation.Z))
-end
 
 local function vectorToMap(map, v)
 	local mx, my = map[v.X], map[v.X] and map[v.X][v.Y]
@@ -131,8 +127,8 @@ function pathfinding:reconstructPath(node)
 end
 
 function pathfinding:getPath(map, start_point, end_point, separation, allow_diagonals)
-	local start_node = addNode(map, snapToGrid(start_point, separation))
-	local end_node = addNode(map, snapToGrid(end_point, separation))
+	local start_node = addNode(map, start_point, separation)
+	local end_node = addNode(map, end_point, separation)
 
 	if not start_node or not end_node then
 		return {}
