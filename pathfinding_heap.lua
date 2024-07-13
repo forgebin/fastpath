@@ -100,7 +100,7 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
         local neighbors = self:getNeighbors(map, current, separation, allow_diagonals)
         for _, neighbor in next, neighbors do
             if visited[neighbor] then continue end
-            local raycast = workspace:Raycast(current, neighbor-current, params)
+            local raycast = workspace:Raycast(current+Vector(0,2.5,0), (neighbor+Vector(0,2.5,0))-(current+Vector(0,2.5,0)), params)
             if raycast then
                 continue
             end
