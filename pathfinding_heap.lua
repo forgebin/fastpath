@@ -62,7 +62,7 @@ local function comparator(a, b)
 end
 
 -- main pathfinding function -> A-Star algorithm (https://en.wikipedia.org/wiki/A*_search_algorithm)
-function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonals, time_limit)
+function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonals, time_limit, params)
     if (#(self:getNeighbors(map, start_node, separation, allow_diagonals)) == 0) then
         return false
     end
@@ -161,7 +161,7 @@ function pathfinding:getPath(map, start_point, end_point, separation, allow_diag
     end
 
     -- Compute the path
-    if (not self:aStar(map, start_node, end_node, separation, allow_diagonals, params)) then
+    if (not self:aStar(map, start_node, end_node, separation, allow_diagonals, 0.5, params)) then
         return {}
     end
 
