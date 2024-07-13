@@ -62,7 +62,7 @@ local function comparator(a, b)
 end
 
 -- main pathfinding function -> A-Star algorithm (https://en.wikipedia.org/wiki/A*_search_algorithm)
-function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonals, time_limit, params)
+function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonals, time_limit)
     if (#(self:getNeighbors(map, start_node, separation, allow_diagonals)) == 0) then
         return false
     end
@@ -70,10 +70,10 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
         return false
     end
 
-    time_limit = time_limit or math.huge
+    time_limit = time_limit or HUGE
 
-    local g_score, f_score = {}, {}
-    local previous_node, visited = {}, {}
+    g_score, f_score = {}, {}
+    previous_node, visited = {}, {}
 
     g_score[start_node] = 0
     f_score[start_node] = getMagnitude(start_node, end_node)
@@ -82,35 +82,31 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
     nodes:Insert(start_node)
 
     local start = os.clock()
-    local closest_node, closest_distance = start_node, getMagnitude(start_node, end_node)
-
-    while (#nodes > 0) do
+    while (#nodes > 0 and current ~= end_node) do
         local current, currentIndex = nodes:Pop()
         visited[current] = true
 
         -- End Node is reached
         if (current == end_node) then
-            return self:reconstructPath(previous_node, end_node)
+            return true
         end
 
         -- Exceeded time frame
-        if (os.clock() - start > time_limit) then
-            break
+        if (os.clock()-start > time_limit) then
+            return false
         end
         
         -- Compute and manage neighbors
         local neighbors = self:getNeighbors(map, current, separation, allow_diagonals)
         for _, neighbor in next, neighbors do
             if visited[neighbor] then continue end
-
             local raycast = workspace:Raycast(current, neighbor-current, params)
             if raycast then
                 continue
             end
-            
             local tentative_g = g_score[current] + getMagnitude(current, neighbor)
                     
-            if tentative_g < (g_score[neighbor] or math.huge) then 
+            if tentative_g < (g_score[neighbor] or HUGE) then 
                 previous_node[neighbor] = current
                 g_score[neighbor] = tentative_g
                 f_score[neighbor] = tentative_g + getMagnitude(neighbor, end_node)
@@ -122,8 +118,7 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
         end
     end
 
-    -- If end_node was not reached, return path to the closest node
-    return
+    return true
 end
 
 -- Recursive path reconstruction (backtracking from previous_node's)
