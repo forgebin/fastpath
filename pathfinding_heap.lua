@@ -70,10 +70,10 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
         return false
     end
 
-    time_limit = time_limit or HUGE
+    time_limit = time_limit or math.huge
 
-    g_score, f_score = {}, {}
-    previous_node, visited = {}, {}
+    local g_score, f_score = {}, {}
+    local previous_node, visited = {}, {}
 
     g_score[start_node] = 0
     f_score[start_node] = getMagnitude(start_node, end_node)
@@ -82,18 +82,27 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
     nodes:Insert(start_node)
 
     local start = os.clock()
-    while (#nodes > 0 and current ~= end_node) do
+    local closest_node, closest_distance = start_node, getMagnitude(start_node, end_node)
+
+    while (#nodes > 0) do
         local current, currentIndex = nodes:Pop()
         visited[current] = true
 
         -- End Node is reached
         if (current == end_node) then
-            return true
+            return self:reconstructPath(previous_node, end_node)
+        end
+
+        -- Update closest node
+        local current_distance = getMagnitude(current, end_node)
+        if current_distance < closest_distance then
+            closest_node = current
+            closest_distance = current_distance
         end
 
         -- Exceeded time frame
-        if (os.clock()-start > time_limit) then
-            return false
+        if (os.clock() - start > time_limit) then
+            break
         end
         
         -- Compute and manage neighbors
@@ -103,7 +112,7 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
 
             local tentative_g = g_score[current] + getMagnitude(current, neighbor)
                     
-            if tentative_g < (g_score[neighbor] or HUGE) then 
+            if tentative_g < (g_score[neighbor] or math.huge) then 
                 previous_node[neighbor] = current
                 g_score[neighbor] = tentative_g
                 f_score[neighbor] = tentative_g + getMagnitude(neighbor, end_node)
@@ -115,7 +124,8 @@ function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonal
         end
     end
 
-    return true
+    -- If end_node was not reached, return path to the closest node
+    return self:reconstructPath(previous_node, closest_node)
 end
 
 -- Recursive path reconstruction (backtracking from previous_node's)
