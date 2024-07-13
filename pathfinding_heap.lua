@@ -63,7 +63,14 @@ end
 
 -- main pathfinding function -> A-Star algorithm (https://en.wikipedia.org/wiki/A*_search_algorithm)
 function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonals, time_limit)
-    time_limit = time_limit or HUGE
+    if (#(self:getNeighbors(map, start_node, separation, allow_diagonals)) == 0) then
+        return false
+    end
+    if (#(self:getNeighbors(map, end_node, separation, allow_diagonals)) == 0) then
+        return false
+    end
+
+    time_limit = time_limit or 0.25
 
     g_score, f_score = {}, {}
     previous_node, visited = {}, {}
@@ -126,16 +133,35 @@ function pathfinding:reconstructPath(node, start_node, end_node, list)
 end
 
 -- Provide a map (3D Array of points with constant separations in 3 axes), a start and end point, the map point separation, and get a path (list of points) in return
-function pathfinding:getPath(map, start_point, end_point, separation, allow_diagonals)
-    local start_node = addNode(map, snapToGrid(start_point, separation))
-    local end_node = addNode(map, snapToGrid(end_point, separation))
+function pathfinding:getPath(map, start_point, end_point, separation, allow_diagonals, params)
+    local function findClosestPoint(point)
+        local closestPoint = nil
+        local minDistance = math.huge
+
+        for x, yMap in pairs(map) do
+            for y, zMap in pairs(yMap) do
+                for z, mapPoint in pairs(zMap) do
+                    local distance = (point - mapPoint).Magnitude
+                    if distance < minDistance then
+                        minDistance = distance
+                        closestPoint = mapPoint
+                    end
+                end
+            end
+        end
+
+        return closestPoint
+    end
+
+    local start_node = findClosestPoint(start_point)
+    local end_node = findClosestPoint(end_point)
 
     if (not start_node or not end_node) then
         return {}
     end
 
     -- Compute the path
-    if (not self:aStar(map, start_node, end_node, separation, allow_diagonals)) then
+    if (not self:aStar(map, start_node, end_node, separation, allow_diagonals, params)) then
         return {}
     end
 
