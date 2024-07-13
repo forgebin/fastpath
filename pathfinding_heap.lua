@@ -1,136 +1,137 @@
-local pathfinding = {}
-local heap = loadstring(game:HttpGet("https://raw.githubusercontent.com/Blissful4992/pathfinding/main/binary_heap.lua"))()
+local mapping = {}
 
--- Cached Functions and Constants
-local V3, ROUND, HUGE = Vector3.new, math.round, math.huge
-local TINSERT = table.insert
+-- Globals --
+local RAY_PRECISION = 1.0e-4;
 
--- Precompute moves
-local MOVES = {V3(-1,0,0),V3(0,-1,0),V3(0,0,-1),V3(0,0,1),V3(0,1,0),V3(1,0,0)}
-local DIAGONAL_MOVES = {
-	V3(-1,-1,-1),V3(-1,-1,0),V3(-1,-1,1),V3(-1,0,-1),V3(-1,0,1),V3(-1,1,-1),V3(-1,1,0),V3(-1,1,1),
-	V3(0,-1,-1),V3(0,-1,1),V3(0,1,-1),V3(0,1,1),V3(1,-1,-1),V3(1,-1,0),V3(1,-1,1),V3(1,0,-1),V3(1,0,1),
-	V3(1,1,-1),V3(1,1,0),V3(1,1,1)
-}
+-- Cached Functions --
 
--- Utility Functions
-local D = 1  -- Cost of moving along an axis
-local D2 = math.sqrt(2)  -- Cost of moving diagonally in a plane
-local D3 = math.sqrt(3)  -- Cost of moving diagonally in 3D space
+local V3 = Vector3.new;
+local ROUND, MIN = math.round, math.min; 
+local TINSERT = table.insert;
 
-local function getMagnitude(start, goal)
-	return (start-goal).Magnitude
+-- Utility Functions --
+
+local function snap(a, b)
+    return ROUND(a/b)*b;
 end
-
-local function vectorToMap(map, v)
-	local mx, my = map[v.X], map[v.X] and map[v.X][v.Y]
-	return my and my[v.Z]
+-- Snaps a point to a virtual game grid (simple function used by a various of 3d building games e.g, bloxburg)
+local function snapToGrid(v, separation)
+    return V3(
+        snap(v.X, separation.X),
+        snap(v.Y, separation.Y),
+        snap(v.Z, separation.Z)
+    )
 end
-
+local function getUnit(a, b)
+    return (b-a).unit;
+end
+local function hasProperty(object, property)
+    local success, value = pcall(function()
+        return object[property]
+    end)
+    return success and value ~= object:FindFirstChild(property)
+end
 local function addNode(map, v)
-	local mx = map[v.X]
-	if not mx then mx = {}; map[v.X] = mx end
-	local my = mx[v.Y]
-	if not my then my = {}; mx[v.Y] = my end
-	my[v.Z] = my[v.Z] or v
-	return v
+    map[v.X] = map[v.X] or {}
+    map[v.X][v.Y] = map[v.X][v.Y] or {}
+    map[v.X][v.Y][v.Z] = map[v.X][v.Y][v.Z] or v
+    return v
 end
 
--- Pathfinding Functions
-function pathfinding:getNeighbors(map, node, separation, allow_diagonals)
-	local neighbors = {}
-	for i = 1, #MOVES do
-		local n = vectorToMap(map, node + MOVES[i] * separation)
-		if n then neighbors[#neighbors+1] = n end
-	end
-	if allow_diagonals then
-		for i = 1, #DIAGONAL_MOVES do
-			local n = vectorToMap(map, node + DIAGONAL_MOVES[i] * separation)
-			if n then neighbors[#neighbors+1] = n end
-		end
-	end
-	return neighbors
+-- Mapping Functions --
+
+--[[
+    recursiveRay() will find all intersect points of all parts between points 'from' and 'to'
+]]
+function mapping:recursiveRay(from, to, results, raycast_params, c, reverse)
+    c = c + 1
+    if c > 1000 then return end
+    
+    local result = workspace:Raycast(from, to-from, raycast_params)
+    
+    if (result) then
+        local intersect = result.Position
+
+        if (reverse) then self:recursiveRay(intersect + getUnit(intersect, to)*RAY_PRECISION, to, results, raycast_params, c, reverse) end
+
+        if (not hasProperty(result.Instance, "CanCollide") or result.Instance.CanCollide) then
+            TINSERT(results, intersect)
+        end
+
+        if (not reverse) then self:recursiveRay(intersect + getUnit(intersect, to)*RAY_PRECISION, to, results, raycast_params, c, reverse) end
+    end
 end
 
-local g_score, f_score, previous_node, visited
+--[[
+    Key relation between top and bottom of parts:
+        if part.top is top_intersects[i] ...
+        then part.bottom is bottom_intersects[i]
+    Therefore the key relation between top and bottom of open spaces between these parts:
+        if space.top is top_intersects[i] ...
+        then space.bottom is bottom_intersects[i-1] (if both lists are ordered by descending Y position)
+]]
+function mapping:getValidIntersects(top_intersects, bottom_intersects, intersect_count, agent_height)
+    local valid = {}
 
-function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonals, time_limit, params)
-	if #self:getNeighbors(map, start_node, separation, allow_diagonals) == 0 or
-		#self:getNeighbors(map, end_node, separation, allow_diagonals) == 0 then
-		return false, {}
-	end
+    for i = 1, intersect_count do
+        local top = top_intersects[i]
+        local bottom = bottom_intersects[i-1]
 
-	time_limit = time_limit or HUGE
-	g_score, f_score, previous_node, visited = {}, {}, {}, {}
+        local size = bottom.y-top.y
+        if size < agent_height then continue end -- Space is either size 0, negative, or too small to be inside of
 
-	g_score[start_node], f_score[start_node] = 0, getMagnitude(start_node, end_node)
+        TINSERT(valid, top)
+    end
 
-	local nodes = heap.new(function(a, b) return f_score[a] > f_score[b] end)
-	nodes:Insert(start_node)
-
-	local start_time = tick()
-	local best_node = start_node
-	local best_f_score = f_score[start_node]
-
-	local timer_func = 0
-	while #nodes > 0 do
-		timer_func += 1
-		if timer_func > 1024 then
-			task.wait()
-			timer_func = 0
-		end
-		pcall(function()
-			local current = nodes:Pop()
-			if current == end_node then return true, self:reconstructPath(current) end
-			if tick() - start_time > time_limit then warn("TIMELIMIT REACH") return end
-
-			visited[current] = true
-			for _, neighbor in ipairs(self:getNeighbors(map, current, separation, allow_diagonals)) do
-				if not visited[neighbor] then
-					local tentative_g = g_score[current] + getMagnitude(current, neighbor)
-					if tentative_g < (g_score[neighbor] or HUGE) then 
-						previous_node[neighbor] = current
-						g_score[neighbor] = tentative_g
-						f_score[neighbor] = tentative_g + getMagnitude(neighbor, end_node)
-						if not nodes:Find(neighbor) then
-							nodes:Insert(neighbor)
-						end
-
-						-- Update best node if this is closer to the end
-						if f_score[neighbor] < best_f_score then
-							best_node = neighbor
-							best_f_score = f_score[neighbor]
-						end
-					end
-				end
-			end
-		end)
-	end
-
-	-- Time limit reached or no path found, return the best path so far
-	return false, self:reconstructPath(best_node)
+    return valid
 end
 
-function pathfinding:reconstructPath(node)
-	local path = {}
-	local current = node
-	while current do
-		table.insert(path, 1, current)
-		current = previous_node[current]
-	end
-	return path
+--[[
+    A Traversable spot is a open spot for the player to traverse between either:
+        - the bottom of 1 object and the top of 1 object below it ...
+        - the top of the world and the top of 1 object below it
+]]
+function mapping:getTraversableSpots(pos, agent_height, raycast_params)
+    local from = V3(pos.x, 1000, pos.z)
+    local to = V3(pos.x, -1000, pos.z)
+
+    local top_intersects = {}
+    self:recursiveRay(from, to, top_intersects, raycast_params, 0, false)
+
+    local bottom_intersects = {}
+    self:recursiveRay(to, from, bottom_intersects, raycast_params, 0, true) -- Reverse is true because we want it ordered by descending Y position
+
+    local top_count = #top_intersects
+    local bottom_count = #bottom_intersects
+
+    if top_count == 0 then return {} end
+    if top_count ~= bottom_count then top_count = MIN(top_count, bottom_count) end
+
+    bottom_intersects[0] = from
+
+    return self:getValidIntersects(top_intersects, bottom_intersects, top_count, agent_height)
 end
 
-function pathfinding:getPath(map, start_point, end_point, separation, allow_diagonals)
-	local start_node = addNode(map, start_point, separation)
-	local end_node = addNode(map, end_point, separation)
+function mapping:createMap(p1, p2, separation, agent_height, raycast_params)
+    local map = {}
 
-	if not start_node or not end_node then
-		return {}
-	end
+    raycast_params = raycast_params or RaycastParams.new()
 
-	local success, path = self:aStar(map, start_node, end_node, separation, allow_diagonals)
-	return path
+    local diffx, diffz = p2.x-p1.x, p2.z-p1.z;
+    local dx, dz = diffx < 0 and -1 or 1, diffz < 0 and -1 or 1;
+
+    for x = 0, diffx, separation.X do
+        for z = 0, diffz, separation.Z do
+            local new_x, new_z = p1.x+x*dx, p1.z+z*dz
+            local snapped = snapToGrid(V3(new_x, 0, new_z), separation)
+
+            for _, v in next, self:getTraversableSpots(snapped, agent_height, raycast_params) do
+                addNode(map, snapToGrid(v, separation))
+            end
+        end
+    end
+
+    return map
 end
 
-return pathfinding
+return mapping
