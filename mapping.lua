@@ -6,10 +6,6 @@ local V3, ROUND, MIN = Vector3.new, math.round, math.min
 local TINSERT = table.insert
 
 -- Utility Functions
-local function snap(a, b) return ROUND(a/b)*b end
-local function snapToGrid(v, separation)
-    return V3(snap(v.X, separation.X), snap(v.Y, separation.Y), snap(v.Z, separation.Z))
-end
 local function getUnit(a, b) return (b-a).Unit end
 
 local function hasProperty(object, property)
@@ -87,9 +83,9 @@ function mapping:createMap(p1, p2, separation, agent_height, raycast_params)
 
     for x = 0, diffx, separation.X * dx do
         for z = 0, diffz, separation.Z * dz do
-            local snapped = snapToGrid(V3(p1.X + x, 0, p1.Z + z), separation)
-            for _, v in ipairs(self:getTraversableSpots(snapped, agent_height, raycast_params)) do
-                addNode(map, snapToGrid(v, separation))
+            local position = V3(p1.X + x, 0, p1.Z + z)
+            for _, v in ipairs(self:getTraversableSpots(position, agent_height, raycast_params)) do
+                addNode(map, v)
             end
         end
     end
