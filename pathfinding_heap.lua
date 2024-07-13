@@ -16,9 +16,21 @@ local MOVES, DIAGONAL_MOVES = {
 
 -- Utility Functions --
 
-local function getMagnitude(a, b)
-	return (b-a).magnitude;
+local sqrt2 = math.sqrt(2)
+local sqrt3 = math.sqrt(3)
+
+function getMagnitude(node, goal)
+    local dx = math.abs(node.X - goal.X)
+    local dy = math.abs(node.Y - goal.Y)
+    local dz = math.abs(node.Z - goal.Z)
+    
+    local diag = math.min(dx, dy, dz)
+    local straight = math.max(dx, dy, dz) - diag
+    local diag2D = math.min(straight, math.max(0, math.min(dx, dy, dz) - diag))
+    
+    return (sqrt3 - sqrt2) * diag + (sqrt2 - 1) * diag2D + straight
 end
+
 local function snap(a, b)
 	return ROUND(a/b)*b;
 end
