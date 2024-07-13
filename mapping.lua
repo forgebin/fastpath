@@ -85,7 +85,7 @@ function mapping:createMap(p1, p2, separation, agent_height, raycast_params)
         for z = 0, diffz, separation.Z * dz do
             local position = V3(p1.X + x, 0, p1.Z + z)
             for _, v in ipairs(self:getTraversableSpots(position, agent_height, raycast_params)) do
-                addNode(map, v)
+                addNode(map, v + Vector3.new(0,4,0))
             end
         end
     end
