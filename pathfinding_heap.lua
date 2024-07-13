@@ -63,13 +63,6 @@ end
 
 -- main pathfinding function -> A-Star algorithm (https://en.wikipedia.org/wiki/A*_search_algorithm)
 function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonals, time_limit)
-    if (#(self:getNeighbors(map, start_node, separation, allow_diagonals)) == 0) then
-        return false
-    end
-    if (#(self:getNeighbors(map, end_node, separation, allow_diagonals)) == 0) then
-        return false
-    end
-
     time_limit = time_limit or HUGE
 
     g_score, f_score = {}, {}
