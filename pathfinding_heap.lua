@@ -75,120 +75,112 @@ end
 
 -- main pathfinding function -> A-Star algorithm (https://en.wikipedia.org/wiki/A*_search_algorithm)
 function pathfinding:aStar(map, start_node, end_node, separation, allow_diagonals, time_limit, params)
-    if (#(self:getNeighbors(map, start_node, separation, allow_diagonals)) == 0) then
-        return false, {start_node}
-    end
-    if (#(self:getNeighbors(map, end_node, separation, allow_diagonals)) == 0) then
-        return false, {start_node}
-    end
+	if (#(self:getNeighbors(map, start_node, separation, allow_diagonals)) == 0) then
+		return false
+	end
+	if (#(self:getNeighbors(map, end_node, separation, allow_diagonals)) == 0) then
+		return false
+	end
 
-    time_limit = time_limit or 0.25
+	time_limit = time_limit or 0.25
 
-    g_score, f_score = {}, {}
-    previous_node, visited = {}, {}
+	g_score, f_score = {}, {}
+	previous_node, visited = {}, {}
 
-    g_score[start_node] = 0
-    f_score[start_node] = getMagnitude(start_node, end_node)
+	g_score[start_node] = 0
+	f_score[start_node] = getMagnitude(start_node, end_node)
 
-    local nodes, current = heap.new(comparator)
-    nodes:Insert(start_node)
+	local nodes, current = heap.new(comparator)
+	nodes:Insert(start_node)
 
-    local start = os.clock()
-    local best_node = start_node
-    local best_score = f_score[start_node]
+	local start = os.clock()
+	while (#nodes > 0 and current ~= end_node) do
+		local current, currentIndex = nodes:Pop()
+		visited[current] = true
 
-    while (#nodes > 0 and current ~= end_node) do
-        local current, currentIndex = nodes:Pop()
-        visited[current] = true
+		-- End Node is reached
+		if (current == end_node) then
+			return true
+		end
 
-        -- End Node is reached
-        if (current == end_node) then
-            return true, nil
-        end
+		-- Exceeded time frame
+		if (os.clock()-start > time_limit) then
+			return false
+		end
 
-        -- Update best partial path
-        if f_score[current] < best_score then
-            best_node = current
-            best_score = f_score[current]
-        end
+		-- Compute and manage neighbors
+		local neighbors = self:getNeighbors(map, current, separation, allow_diagonals)
+		for _, neighbor in next, neighbors do
+			if visited[neighbor] then continue end
+			local raycast = workspace:Raycast(current+Vector3.new(0,2.5,0), (neighbor+Vector3.new(0,2.5,0))-(current+Vector3.new(0,2.5,0)), params)
+			if raycast then
+				continue
+			end
+			local tentative_g = g_score[current] + getMagnitude(current, neighbor)
 
-        -- Exceeded time frame
-        if (os.clock()-start > time_limit) then
-            return false, best_node
-        end
+			if tentative_g < (g_score[neighbor] or HUGE) then 
+				previous_node[neighbor] = current
+				g_score[neighbor] = tentative_g
+				f_score[neighbor] = tentative_g + getMagnitude(neighbor, end_node)
 
-        -- Compute and manage neighbors
-        local neighbors = self:getNeighbors(map, current, separation, allow_diagonals)
-        for _, neighbor in next, neighbors do
-            if visited[neighbor] then continue end
-            local raycast = workspace:Raycast(current+Vector3.new(0,2.5,0), (neighbor+Vector3.new(0,2.5,0))-(current+Vector3.new(0,2.5,0)), params)
-            if raycast then
-                continue
-            end
-            local tentative_g = g_score[current] + getMagnitude(current, neighbor)
+				if not nodes:Find(neighbor) then
+					nodes:Insert(neighbor)
+				end
+			end
+		end
+	end
 
-            if tentative_g < (g_score[neighbor] or HUGE) then 
-                previous_node[neighbor] = current
-                g_score[neighbor] = tentative_g
-                f_score[neighbor] = tentative_g + getMagnitude(neighbor, end_node)
-
-                if not nodes:Find(neighbor) then
-                    nodes:Insert(neighbor)
-                end
-            end
-        end
-    end
-
-    return false, best_node
+	return true
 end
 
--- Modified getPath function
+-- Recursive path reconstruction (backtracking from previous_node's)
+function pathfinding:reconstructPath(node, start_node, end_node, list)
+	if (not previous_node[node]) then return end
+
+	self:reconstructPath(previous_node[node], start_node, end_node, list)
+
+	if (node ~= start_node and node ~= end_node) then -- only insert path nodes
+		TINSERT(list, node)
+	end
+end
+
+-- Provide a map (3D Array of points with constant separations in 3 axes), a start and end point, the map point separation, and get a path (list of points) in return
 function pathfinding:getPath(map, start_point, end_point, separation, allow_diagonals, params)
-    local function findClosestPoint(point)
-        local closestPoint = nil
-        local minDistance = math.huge
+	local function findClosestPoint(point)
+		local closestPoint = nil
+		local minDistance = math.huge
 
-        for x, yMap in pairs(map) do
-            for y, zMap in pairs(yMap) do
-                for z, mapPoint in pairs(zMap) do
-                    local distance = (point - mapPoint).Magnitude
-                    if distance < minDistance then
-                        minDistance = distance
-                        closestPoint = mapPoint
-                    end
-                end
-            end
-        end
+		for x, yMap in pairs(map) do
+			for y, zMap in pairs(yMap) do
+				for z, mapPoint in pairs(zMap) do
+					local distance = (point - mapPoint).Magnitude
+					if distance < minDistance then
+						minDistance = distance
+						closestPoint = mapPoint
+					end
+				end
+			end
+		end
 
-        return closestPoint
-    end
+		return closestPoint
+	end
 
-    local start_node = findClosestPoint(start_point)
-    local end_node = findClosestPoint(end_point)
+	local start_node = findClosestPoint(start_point)
+	local end_node = findClosestPoint(end_point)
 
-    if (not start_node or not end_node) then
-        return {start_point, end_point}
-    end
+	if (not start_node or not end_node) then
+		return {}
+	end
 
-    -- Compute the path
-    local success, best_node = self:aStar(map, start_node, end_node, separation, allow_diagonals, 0.5, params)
+	-- Compute the path
+	if (not self:aStar(map, start_node, end_node, separation, allow_diagonals, 0.5, params)) then
+		return {}
+	end
 
-    local path = {}
-    if success then
-        -- Reconstruct the full path (Backtracking from previous_node)
-        self:reconstructPath(end_node, start_node, end_node, path)
-    else
-        -- Reconstruct the best partial path
-        self:reconstructPath(best_node, start_node, end_node, path)
-        -- Add the end_node to complete the path
-        table.insert(path, end_node)
-    end
-
-    -- Always include start and end points
-    table.insert(path, 1, start_point)
-    table.insert(path, end_point)
-
-    return path
+	local path = {}
+	-- Reconstruct the path (Backtracking from previous_node)
+	self:reconstructPath(end_node, start_node, end_node, path)
+	return path
 end
 
 return pathfinding
