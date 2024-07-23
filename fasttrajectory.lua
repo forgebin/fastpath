@@ -107,7 +107,7 @@ function Trajectory:CalculateSingle(base_part : BasePart, x0 : Vector3, v0  : Ve
 		quick_params.RespectCanCollide = true
 		quick_params.FilterDescendantsInstances = {base_part}
 		
-		local raycast = workspace:Spherecast(p0, base_part.Size.Y/2, p1 - p0, quick_params)
+		local raycast = workspace:Raycast(p0, p1 - p0, quick_params)
 		if raycast then
 			hit, pos, normal, material = true, raycast.Position, raycast.Normal, raycast.Material
 		else
