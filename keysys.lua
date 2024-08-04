@@ -1,3 +1,4 @@
+-- who will here be tonight
 local RobloxFrameGui = Instance.new("ScreenGui")
 local Frame = Instance.new("Frame")
 local UICorner = Instance.new("UICorner")
@@ -32,8 +33,10 @@ TextBox.Size = UDim2.new(0.887640476, 0, 0.330097079, 0)
 TextBox.Font = Enum.Font.Unknown
 TextBox.PlaceholderText = "LICENSE"
 TextBox.Text = ""
-TextBox.TextColor3 = Color3.fromRGB(0, 0, 0)
+TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.TextScaled = true
 TextBox.TextSize = 14.000
+TextBox.TextWrapped = true
 TextBox.TextXAlignment = Enum.TextXAlignment.Left
 
 UICorner_2.Parent = TextBox
@@ -53,5 +56,4 @@ TextLabel.TextSize = 14.000
 TextLabel.TextWrapped = true
 
 UICorner_3.Parent = TextLabel
-
 return RobloxFrameGui
