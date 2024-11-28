@@ -6,8 +6,9 @@ local TextBox = Instance.new("TextBox")
 local UICorner_2 = Instance.new("UICorner")
 local TextLabel = Instance.new("TextLabel")
 local UICorner_3 = Instance.new("UICorner")
+local CopyButton = Instance.new("TextButton")  -- Create the Copy CIFL button
 
---Properties:
+-- Properties:
 
 RobloxFrameGui.Name = "RobloxFrameGui"
 RobloxFrameGui.Parent = game.CoreGui
@@ -56,4 +57,26 @@ TextLabel.TextSize = 14.000
 TextLabel.TextWrapped = true
 
 UICorner_3.Parent = TextLabel
+
+-- Copy CIFL Button
+CopyButton.Name = "CopyCIFLButton"
+CopyButton.Parent = Frame
+CopyButton.BackgroundColor3 = Color3.fromRGB(36, 40, 65)
+CopyButton.BackgroundTransparency = 0.200
+CopyButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+CopyButton.BorderSizePixel = 0
+CopyButton.Position = UDim2.new(0.219101131, 0, 0.65, 0)  -- Position below the text label
+CopyButton.Size = UDim2.new(0.561797738, 0, 0.233009711, 0)
+CopyButton.Font = Enum.Font.Unknown
+CopyButton.Text = "Copy CIFL"
+CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CopyButton.TextScaled = true
+CopyButton.TextSize = 14.000
+CopyButton.TextWrapped = true
+
+-- Add functionality to the button
+CopyButton.MouseButton1Click:Connect(function()
+    setclipboard(game:GetService("RbxAnalyticsService"):GetClientId():reverse())  -- Copy ClientId to clipboard
+end)
+
 return RobloxFrameGui
